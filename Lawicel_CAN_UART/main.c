@@ -10,6 +10,26 @@
 #include <stdio.h>
 #include <string.h>
 
+
+#define CAN1_ReMap
+
+#ifndef CAN1_ReMap
+#define CAN1_GPIO_PORT			GPIOA
+#define CAN1_RX_SOURCE			GPIO_Pin_11
+#define CAN1_TX_SOURCE			GPIO_Pin_12
+#define CAN1_Periph				RCC_APB2Periph_GPIOA
+#else
+#define CAN1_GPIO_PORT			GPIOB
+#define CAN1_RX_SOURCE			GPIO_Pin_8
+#define CAN1_TX_SOURCE			GPIO_Pin_9
+#define CAN1_Periph				RCC_APB2Periph_GPIOB
+#endif
+
+#define USART_RX_SIZE 1024
+uint8_t USART_RX_Buff[USART_RX_SIZE];
+
+CanTxMsg TxMessage;
+
 uint8_t interface_state = 0;
 
 #define BUFF_SIZE 1024
@@ -46,7 +66,6 @@ void AddBuffToTransmit(uint8_t* buf, uint16_t len)
 		memcpy(&Buff2[Buf2Idx], buf, len);
 		Buf2Idx += len;
 	}
-
 }
 
 void SendAvailableData()
@@ -72,25 +91,6 @@ void SendAvailableData()
 	}
 }
 
-#define CAN1_ReMap
-
-#ifndef CAN1_ReMap
-#define CAN1_GPIO_PORT			GPIOA
-#define CAN1_RX_SOURCE			GPIO_Pin_11
-#define CAN1_TX_SOURCE			GPIO_Pin_12
-#define CAN1_Periph				RCC_APB2Periph_GPIOA
-#else
-#define CAN1_GPIO_PORT			GPIOB
-#define CAN1_RX_SOURCE			GPIO_Pin_8
-#define CAN1_TX_SOURCE			GPIO_Pin_9
-#define CAN1_Periph				RCC_APB2Periph_GPIOB
-#endif
-
-#define USART_RX_SIZE 1024
-uint8_t USART_RX_Buff[USART_RX_SIZE];
-
-CanTxMsg TxMessage;
-
 uint8_t hexascii_to_halfbyte(uint8_t _ascii)
 {
 	if ((_ascii >= '0') && (_ascii <= '9'))
@@ -113,9 +113,6 @@ uint8_t halfbyte_to_hexascii(uint8_t _halfbyte)
 
 void SetPrescalerAndInitCan(uint8_t presc)
 {
-	///-------------------------------------------------
-	///CAN just for fun
-	///-------------------------------------------------
 	CAN_InitTypeDef CAN_InitStructure;
 	GPIO_InitTypeDef GPIO_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -150,7 +147,7 @@ void SetPrescalerAndInitCan(uint8_t presc)
 	CAN_InitStructure.CAN_SJW = CAN_SJW_1tq;
 	CAN_InitStructure.CAN_BS1 = CAN_BS1_13tq;
 	CAN_InitStructure.CAN_BS2 = CAN_BS2_2tq;
-	CAN_InitStructure.CAN_Prescaler = presc;  //For 32 MHz APB1 Clock only!
+	CAN_InitStructure.CAN_Prescaler = presc;      //For 32 MHz APB1 Clock only!
 
 	CAN_Init(CAN1, &CAN_InitStructure);
 
@@ -166,17 +163,13 @@ void SetPrescalerAndInitCan(uint8_t presc)
 	CAN_FilterInitStructure.CAN_FilterActivation = ENABLE;
 	CAN_FilterInit(&CAN_FilterInitStructure);
 
-	// CAN FIFO0 message pending interrupt enable
 	CAN_ITConfig(CAN1, CAN_IT_FMP0, ENABLE);
-
-	// NVIC Configuration
-	// Enable CAN1 RX0 interrupt IRQ channel
+	
 	NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
-
 }
 
 void SetupPeriph()
@@ -225,7 +218,7 @@ void SetupPeriph()
 	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
 
 	///-------------------------------------------------
-	///TIM2 for USART2
+	///TIM2 for timestamp
 	///-------------------------------------------------
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
 
@@ -277,12 +270,12 @@ void SetupClock()
 	{
 	}
 
-	RCC_HCLKConfig(RCC_SYSCLK_Div1);  // HCLK   = SYSCLK  32MHz
-	RCC_PCLK1Config(RCC_HCLK_Div1);  // PCLK1  = HCLK    32MHz
-	RCC_PCLK2Config(RCC_HCLK_Div1);  // PCLK2  = HCLK	32MHz
-	RCC_ADCCLKConfig(RCC_PCLK2_Div2);  //ADCCLK = PCLK2/2 16MHz
+	RCC_HCLKConfig(RCC_SYSCLK_Div1);      // HCLK   = SYSCLK  32MHz
+	RCC_PCLK1Config(RCC_HCLK_Div1);      // PCLK1  = HCLK    32MHz
+	RCC_PCLK2Config(RCC_HCLK_Div1);      // PCLK2  = HCLK	32MHz
+	RCC_ADCCLKConfig(RCC_PCLK2_Div2);      //ADCCLK = PCLK2/2 16MHz
 
-	RCC_PLLConfig(RCC_PLLSource_HSE_Div1, RCC_PLLMul_4);  // 8MHz * 4 = 32MHz
+	RCC_PLLConfig(RCC_PLLSource_HSE_Div1, RCC_PLLMul_4);      // 8MHz * 4 = 32MHz
 	RCC_PLLCmd(ENABLE);
 	while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET)
 	{
@@ -293,12 +286,11 @@ void SetupClock()
 	{
 	}
 }
+
 void SetInterfaceState(uint8_t state)
 {
 	interface_state = state;
 }
-
-
 
 int8_t USART_RX_Handler(uint8_t* Buf, uint16_t *Len)
 {
@@ -307,8 +299,6 @@ int8_t USART_RX_Handler(uint8_t* Buf, uint16_t *Len)
 	uint8_t i;
 	uint8_t tmp_byte;
 	uint8_t tmp_buf[128];
-
-	//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 
 	switch (Buf[0])
 	{
@@ -326,19 +316,15 @@ int8_t USART_RX_Handler(uint8_t* Buf, uint16_t *Len)
 
 	case 'O':
 		SetInterfaceState(1);
+		TIM2->CNT = 0;
 		break;
 
 	case 'C':
 		SetInterfaceState(0);
 		break;
 	case 'S':
-		//HAL_CAN_DeInit(&hcan);
 		num_bytes = sprintf((char*)tmp_buf, "\r");
-		if (*Len > 3)
-		{
-
-		}
-		else
+		if (*Len <= 3)
 		{
 			switch (Buf[1])
 			{
@@ -364,7 +350,7 @@ int8_t USART_RX_Handler(uint8_t* Buf, uint16_t *Len)
 				SetPrescalerAndInitCan(4);
 				break;
 			case '7':
-				SetPrescalerAndInitCan(24);
+				SetPrescalerAndInitCan(24);    //83.3
 				break;
 			case '8':
 				SetPrescalerAndInitCan(2);
@@ -416,7 +402,14 @@ int8_t USART_RX_Handler(uint8_t* Buf, uint16_t *Len)
 		num_bytes = sprintf((char*)tmp_buf, "\r");
 		break;
 	}
-	USARTSendDMA((char*)tmp_buf);
+	if (interface_state)
+	{		
+		AddBuffToTransmit(tmp_buf, num_bytes);
+	}
+	else
+	{
+		USARTSendDMA((char*)tmp_buf);
+	}
 	return 0;
 }
 
@@ -434,34 +427,52 @@ void CanRxHandler(CanRxMsg* RxMessage)
 		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->StdId) >> 8);
 		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->StdId) >> 4);
 		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->StdId));
-		buf[num_bytes++] = halfbyte_to_hexascii((8/*RxMessage->DLC*/));
+		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->DLC));
 		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[0]) >> 4);
 		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[0]));
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[1]) >> 4);
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[1]));
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[2]) >> 4);
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[2]));
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[3]) >> 4);
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[3]));
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[4]) >> 4);
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[4]));
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[5]) >> 4);
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[5]));
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[6]) >> 4);
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[6]));
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[7]) >> 4);
-		buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[7]));
+		if (RxMessage->DLC > 1)
+		{			
+			buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[1]) >> 4);
+			buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[1]));
+			if (RxMessage->DLC > 2)
+			{
+				buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[2]) >> 4);
+				buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[2]));
+				if (RxMessage->DLC > 3)
+				{
+					buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[3]) >> 4);
+					buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[3]));
+					if (RxMessage->DLC > 4)
+					{
+						buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[4]) >> 4);
+						buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[4]));
+						if (RxMessage->DLC > 5)
+						{
+							buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[5]) >> 4);
+							buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[5]));
+							if (RxMessage->DLC > 6)
+							{
+								buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[6]) >> 4);
+								buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[6]));
+								if (RxMessage->DLC > 7)
+								{
+									buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[7]) >> 4);
+									buf[num_bytes++] = halfbyte_to_hexascii((RxMessage->Data[7]));
+								}
+							}
+						}
+					}
+				}
+			}			
+		}	
+		
 		buf[num_bytes++] = halfbyte_to_hexascii((time) >> 12);
 		buf[num_bytes++] = halfbyte_to_hexascii((time) >> 8);
 		buf[num_bytes++] = halfbyte_to_hexascii((time) >> 4);
 		buf[num_bytes++] = halfbyte_to_hexascii((time) >> 0);
 
 		buf[num_bytes++] = '\r';
-
-		if (interface_state == 1)
-		{
-			AddBuffToTransmit(buf, num_bytes);
-		}
+		AddBuffToTransmit(buf, num_bytes);
 	}
 }
 
@@ -530,7 +541,7 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
 
 int main(void)
 {
-
+	
 	SetupClock();
 	SetupPeriph();
 
