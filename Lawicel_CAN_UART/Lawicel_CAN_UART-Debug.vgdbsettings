@@ -20,6 +20,7 @@
     <ProjectFile>DY-6MW7U59-3_WT32i_Bluetooth.vcxproj</ProjectFile>
     <RemoteBuildEnvironment>
       <Records />
+      <EnvironmentSetupFiles />
     </RemoteBuildEnvironment>
     <ParallelJobCount>1</ParallelJobCount>
     <SuppressDirectoryChangeMessages>true</SuppressDirectoryChangeMessages>
@@ -63,7 +64,7 @@
     <DebugMethod>
       <ID>com.sysprogs.arm.openocd</ID>
       <InterfaceID>stlink-v2</InterfaceID>
-      <InterfaceSerialNumber>000000000001</InterfaceSerialNumber>
+      <InterfaceSerialNumber>5&amp;C1BD4D0&amp;0&amp;12</InterfaceSerialNumber>
       <Configuration xsi:type="com.visualgdb.edp.openocd.settings">
         <CommandLine>-f interface/stlink-v2.cfg -c "transport select hla_swd" -f target/stm32f1x.cfg -c init -c "reset init"</CommandLine>
         <ExtraParameters>
@@ -79,7 +80,6 @@
           <string>mon halt</string>
           <string>mon reset init</string>
           <string>load</string>
-          <string>mon reset init</string>
         </StartupCommands>
         <PreferredGDBPort>0</PreferredGDBPort>
         <PreferredTelnetPort>0</PreferredTelnetPort>
