@@ -32,7 +32,7 @@ CanTxMsg TxMessage;
 
 uint8_t interface_state = 0;
 
-#define BUFF_SIZE 1024
+#define BUFF_SIZE 4096
 uint8_t Buff1[BUFF_SIZE];
 uint8_t Buff2[BUFF_SIZE];
 uint8_t TxBuf[BUFF_SIZE];
