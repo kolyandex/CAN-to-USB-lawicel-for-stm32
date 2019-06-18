@@ -3,13 +3,11 @@
   <UserDefinedVariableValues />
   <DebugPreferences xsi:type="com.visualgdb.debug.embedded.preferences">
     <CatchpointConfiguration>
-      <Throw>false</Throw>
-      <Rethrow>false</Rethrow>
-      <Catch>false</Catch>
       <Exec>false</Exec>
       <Fork>false</Fork>
       <Vfork>false</Vfork>
       <Syscalls />
+      <CXXCatchpoints />
     </CatchpointConfiguration>
     <LiveWatches>
       <LiveWatch>
